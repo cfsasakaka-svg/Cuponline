@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cupo-Online — Panel</title>
+<style>
+:root{--paper:#fff;--ink:#172033;--muted:#687386;--card:#fff;--line:#e5e7eb;--accent:#315CFF;--ok:#16845b;--warn:#a36a00;--bad:#b23a48;--shadow:0 8px 28px rgba(23,32,51,.08)}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}header{position:sticky;top:0;z-index:5;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}.head{max-width:1100px;margin:auto;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px}.brand{font-weight:800;font-size:20px}.pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:12px;color:var(--muted)}.wrap{max-width:1100px;margin:0 auto;padding:24px 18px 60px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow);margin-bottom:16px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}.btn{border:0;border-radius:11px;padding:10px 14px;background:var(--accent);color:white;font-weight:700;cursor:pointer}.btn.secondary{background:#eef1f7;color:var(--ink)}.btn.danger{background:#fff0f1;color:var(--bad)}button:disabled{opacity:.55;cursor:not-allowed}input,select{width:100%;padding:11px 12px;border:1px solid #d9d3c8;border-radius:10px;background:white;color:var(--ink)}label{display:block;font-weight:700;margin:10px 0 6px}.muted{color:var(--muted)}.empty{text-align:center;color:var(--muted);padding:32px 12px}.error{background:#fff0f1;border:1px solid #f1c4ca;color:#8e2735;border-radius:14px;padding:15px}.success{background:#edf9f3;border:1px solid #c7ead9;color:#126b4b;border-radius:14px;padding:12px}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.between{display:flex;justify-content:space-between;gap:12px;align-items:center}.grade{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:10px 0;padding:14px 16px;background:#fff}.grade-title{font-weight:800;margin-bottom:12px}.metric{font-size:25px;font-weight:800}.tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700;background:#f0f2f6}.tag.ok{background:#e8f7f0;color:var(--ok)}.tag.warn{background:#fff5df;color:var(--warn)}.tag.bad{background:#fff0f1;color:var(--bad)}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:12px;color:var(--muted)}.small{font-size:12px}@media(max-width:600px){.between{align-items:flex-start;flex-direction:column}.head{padding:13px 14px}.wrap{padding:18px 14px 45px}}
+</style>
+</head>
+<body>
+<header><div class="head"><div class="brand">Cupo-Online</div><span class="pill" id="whoami">Cargando…</span></div></header>
+<div class="wrap"><div id="app"><p class="empty">Cargando panel…</p></div></div>
+<script type="module">
+const appEl=document.getElementById('app');
+const whoami=document.getElementById('whoami');
+const params=new URLSearchParams(location.search);
+const liceoId=params.get('liceo');
+const adminToken=params.get('admin');
+
+function showError(title,msg,extra=''){
+  whoami.textContent='Error';
+  appEl.innerHTML=`<div class="error"><h2>${escapeHtml(title)}</h2><p>${escapeHtml(msg)}</p>${extra?`<p class="small">${escapeHtml(extra)}</p>`:''}<button class="btn secondary" id="retryBtn">Reintentar</button></div>`;
+  document.getElementById('retryBtn')?.addEventListener('click',()=>location.reload());
+}
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
+function fmtDate(v){try{return v?.toDate?v.toDate().toLocaleString('es-ES'):new Date(v).toLocaleString('es-ES')}catch{return '—'}}
+function esc(v){return escapeHtml(v)}
+
+async function start(){
+  if(location.protocol==='file:'){
+    showError('Abre la página desde Internet','Este archivo usa Firebase y no debe probarse directamente como archivo local (file://).','Después de subirlo a GitHub Pages funcionará con HTTPS.');
+    return;
+  }
+  try{
+    const [{initializeApp},{getFirestore,collection:fsCollection,doc:fsDoc,addDoc,updateDoc,onSnapshot,query,where:fsWhere}]=await Promise.all([
+      import('https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js')
+    ]);
+    const firebaseConfig={apiKey:'AIzaSyC2_YYQw-iy65JMEYj-9NIPg0uCNoTh8Fs',authDomain:'cuponline-481fe.firebaseapp.com',projectId:'cuponline-481fe',storageBucket:'cuponline-481fe.firebasestorage.app',messagingSenderId:'104604755615',appId:'1:104604755615:web:eb9e76c6db871831d064aa',measurementId:'G-C8DVZJ7E19'};
+    const firestore=getFirestore(initializeApp(firebaseConfig));
+    const db={
+      collection(name){const ref=fsCollection(firestore,name);return {add:o=>addDoc(ref,o),doc:id=>({update:p=>updateDoc(fsDoc(firestore,name,id),p)}),onSnapshot:(ok,err)=>onSnapshot(ref,s=>ok({docs:s.docs.map(d=>({id:d.id,data:()=>d.data()}))}),err),where:(f,op,v)=>{const q=query(ref,fsWhere(f,op,v));return{onSnapshot:(ok,err)=>onSnapshot(q,s=>ok({docs:s.docs.map(d=>({id:d.id,data:()=>d.data()}))}),err)}}}},
+      doc(path){const [name,id]=path.split('/');const ref=fsDoc(firestore,name,id);return {update:p=>updateDoc(ref,p),onSnapshot:(ok,err)=>onSnapshot(ref,s=>ok({exists:s.exists(),id:s.id,data:()=>s.data()||{}}),err)}}
+    };
+    await boot(db);
+  }catch(e){console.error(e);showError('No se pudo iniciar Cupo-Online',e?.message||'Error al cargar Firebase.','Comprueba que estás usando la versión publicada en GitHub Pages y que tienes conexión a Internet.');}
+}
+
+async function boot(db){
+  if(!liceoId){whoami.textContent='Dueño';renderOwner(db);return;}
+  const ref=db.doc('liceos/'+liceoId);
+  let done=false;
+  ref.onSnapshot(d=>{
+    if(done)return;
+    if(!d.exists){done=true;showError('Liceo no encontrado','El enlace no corresponde a un liceo registrado.');return;}
+    done=true;
+    const data=d.data();
+    if(adminToken&&adminToken===data.adminToken){whoami.textContent='Director';renderDirector(db,liceoId,data)}else{whoami.textContent='Preinscripción';renderPublic(db,liceoId,data)}
+  },e=>showError('No se pudo leer el liceo',e?.message||'Firestore rechazó la lectura.','Revisa las reglas de seguridad de Firestore.'));
+}
+
+function renderOwner(db){
+  let liceos=[];
+  let pre=[];
+  appEl.innerHTML=`<div class="card"><div class="between"><div><h1>Panel general</h1><p class="muted">Administración de liceos y preinscripciones.</p></div><button class="btn" id="newLiceo">Crear liceo</button></div></div><div id="ownerBody"></div>`;
+  const paint=()=>{document.getElementById('ownerBody').innerHTML=`<div class="grid"><div class="card"><div class="muted">Liceos</div><div class="metric">${liceos.length}</div></div><div class="card"><div class="muted">Preinscripciones</div><div class="metric">${pre.length}</div></div></div><div class="card"><h2>Liceos registrados</h2>${liceos.length?liceos.map(x=>{const d=x.data();const link=location.origin+location.pathname+'?liceo='+encodeURIComponent(x.id);return `<div class="grade"><div class="grade-title"><strong>${esc(d.nombre||'Sin nombre')}</strong></div><div><p class="small">ID: ${esc(x.id)}</p><p class="small">Enlace público: ${esc(link)}</p><button class="btn secondary copy" data-copy="${esc(link)}">Copiar enlace</button></div></div>`}).join(''):'<p class="empty">Todavía no hay liceos.</p>'}</div>`;document.querySelectorAll('.copy').forEach(b=>b.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(b.dataset.copy);b.textContent='Copiado ✓';}catch{b.textContent='No se pudo copiar'}}));};
+  db.collection('liceos').onSnapshot(s=>{liceos=s.docs;paint()},e=>showError('Error leyendo liceos',e?.message||'No se pudieron cargar los liceos.'));
+  db.collection('preinscripciones').onSnapshot(s=>{pre=s.docs;paint()},e=>showError('Error leyendo preinscripciones',e?.message||'No se pudieron cargar las preinscripciones.'));
+  document.getElementById('newLiceo').addEventListener('click',async()=>{const nombre=prompt('Nombre del liceo:');if(!nombre?.trim())return;try{const token=uid();await db.collection('liceos').add({nombre:nombre.trim(),cupos:[],adminToken:token,creado:new Date().toISOString()});alert('Liceo creado. Guarda el enlace del director que uses para administrarlo.');}catch(e){showError('No se pudo crear el liceo',e?.message||'Firestore rechazó la operación.')}});
+}
+
+function renderDirector(db,id,data){
+  let current=data;let pre=[];
+  appEl.innerHTML=`<div class="card"><div class="between"><div><h1>${esc(data.nombre||'Liceo')}</h1><p class="muted">Panel del director</p></div><button class="btn" id="addGrade">Agregar grado</button></div></div><div class="card"><h2>Cupos por grado</h2><div id="grades"></div></div><div class="card"><h2>Preinscripciones</h2><div id="preBody"></div></div>`;
+  const paint=()=>{const grades=Array.isArray(current.cupos)?current.cupos:[];document.getElementById('grades').innerHTML=grades.length?grades.map((g,i)=>`<div class="grade"><div class="grade-title">${esc(g.grado||'Grado')} — ${Number(g.ocupados||0)}/${Number(g.cupos||0)} ocupados</div><div class="grid"><div><label>Grado</label><input class="g-name" data-i="${i}" value="${esc(g.grado||'')}"></div><div><label>Cupos totales</label><input class="g-total" data-i="${i}" type="number" min="0" value="${Number(g.cupos||0)}"></div><div><label>Ocupados</label><input class="g-used" data-i="${i}" type="number" min="0" value="${Number(g.ocupados||0)}"></div></div><div class="row" style="margin-top:12px"><button class="btn save-grade" data-i="${i}">Guardar</button></div></div>`).join(''):'<p class="empty">No hay grados. Pulsa “Agregar grado”.</p>';document.querySelectorAll('.save-grade').forEach(b=>b.addEventListener('click',async()=>{const i=+b.dataset.i;const grades=[...(current.cupos||[])];const name=document.querySelector(`.g-name[data-i="${i}"]`).value.trim();const total=Math.max(0,+document.querySelector(`.g-total[data-i="${i}"]`).value||0);const used=Math.min(total,Math.max(0,+document.querySelector(`.g-used[data-i="${i}"]`).value||0));if(!name)return alert('Escribe el nombre del grado.');grades[i]={...grades[i],grado:name,cupos:total,ocupados:used};try{await db.doc('liceos/'+id).update({cupos:grades});}catch(e){alert('No se pudo guardar: '+(e?.message||'error'))}}));
+    const body=document.getElementById('preBody');body.innerHTML=pre.length?`<table><thead><tr><th>Nombre</th><th>Grado</th><th>Contacto</th><th>Estado</th></tr></thead><tbody>${pre.map(x=>{const d=x.data();return `<tr><td>${esc(d.nombre||'—')}</td><td>${esc(d.grado||'—')}</td><td>${esc(d.telefono||d.email||'—')}</td><td><span class="tag ${d.estado==='confirmada'?'ok':d.estado==='rechazada'?'bad':'warn'}">${esc(d.estado||'nueva')}</span></td></tr>`}).join('')}</tbody></table>`:'<p class="empty">No hay preinscripciones.</p>';
+  };
+  db.doc('liceos/'+id).onSnapshot(s=>{if(s.exists){current=s.data();paint()}},e=>showError('Error del panel',e?.message||'No se pudo actualizar el liceo.'));
+  db.collection('preinscripciones').where('liceoId','==',id).onSnapshot(s=>{pre=s.docs;paint()},e=>showError('Error de preinscripciones',e?.message||'No se pudieron cargar.'));
+  document.getElementById('addGrade').addEventListener('click',async()=>{const grades=[...(current.cupos||[]),{grado:'Nuevo grado',cupos:0,ocupados:0}];try{await db.doc('liceos/'+id).update({cupos:grades})}catch(e){alert('No se pudo agregar: '+(e?.message||'error'))}});
+}
+
+function renderPublic(db,id,data){
+  const grades=Array.isArray(data.cupos)?data.cupos:[];
+  whoami.textContent='Preinscripción';
+  appEl.innerHTML=`<div class="card"><h1>Preinscripción</h1><p class="muted">${esc(data.nombre||'Liceo')}</p><form id="form"><label>Nombre del estudiante</label><input id="nombre" required><label>Grado</label><select id="grado" required><option value="">Selecciona un grado</option>${grades.map(g=>`<option value="${esc(g.grado)}">${esc(g.grado)} — ${Math.max(0,Number(g.cupos||0)-Number(g.ocupados||0))} disponibles</option>`).join('')}</select><label>Teléfono</label><input id="telefono" inputmode="tel" required><label>Correo electrónico</label><input id="email" type="email"><button class="btn" type="submit" style="margin-top:14px">Enviar preinscripción</button></form><div id="msg"></div></div>`;
+  document.getElementById('form').addEventListener('submit',async e=>{e.preventDefault();const btn=e.submitter;btn.disabled=true;try{await db.collection('preinscripciones').add({liceoId:id,nombre:document.getElementById('nombre').value.trim(),grado:document.getElementById('grado').value,telefono:document.getElementById('telefono').value.trim(),email:document.getElementById('email').value.trim(),estado:'nueva',creado:new Date().toISOString()});document.getElementById('msg').innerHTML='<p class="success">Preinscripción enviada correctamente.</p>';e.target.reset()}catch(err){document.getElementById('msg').innerHTML='<div class="error">No se pudo enviar: '+esc(err?.message||'error')+'</div>'}finally{btn.disabled=false}});
+}
+
+start();
+</script>
+</body>
+</html>
